@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Mapeia cada usuário autenticado (lojista) para a loja que ele administra.
+    // Só o próprio usuário pode ler seu mapeamento; a escrita é feita via
+    // Console do Firebase ou um processo administrativo, nunca pelo cliente.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    match /stores/{storeId} {
+      // Catálogo público: qualquer pessoa pode LER os dados da loja.
+      allow read: if true;
+
+      // Só o dono da loja (uid == users/{uid}.storeId) pode alterar os dados dela.
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId;
+
+      match /products/{productId} {
+        allow read: if true;
+        allow write: if request.auth != null &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId;
+      }
+
+      match /categories/{categoryId} {
+        allow read: if true;
+        allow write: if request.auth != null &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId;
+      }
+    }
+  }
+}
